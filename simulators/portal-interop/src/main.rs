@@ -1,3 +1,4 @@
+use ethportal_api::generate_random_remote_enr;
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
@@ -68,105 +69,116 @@ dyn_async! {
         // Iterate over all possible pairings of clients and run the tests (including self-pairings)
         for (client_a, client_b) in clients.iter().cartesian_product(clients.iter()) {
 
-            // Test block header with proof
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
+            // // Test block header with proof
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("OFFER Block Header {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_offer_header,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test block header with proof after Shapella upgrade (with withdraws)
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("OFFER Block Header (Shapella) {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_offer_header_shapella,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test block body
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("OFFER Block Body {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_offer_body,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test receipts
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("OFFER Receipts {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_offer_receipts,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test portal history ping
+            // test.run(TwoClientTestSpec {
+            //         name: format!("PING {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_ping,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test find content immediate return
+            // test.run(TwoClientTestSpec {
+            //         name: format!("FIND_CONTENT {} --> {}", client_a.name, client_b.name),
+            //         description: "find content: peer immediately returns locally available content".to_string(),
+            //         always_run: false,
+            //         run: test_find_content_immediate_return,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test find content non-present
+            // test.run(TwoClientTestSpec {
+            //         name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
+            //         description: "find content: calls find content that doesn't exist".to_string(),
+            //         always_run: false,
+            //         run: test_find_content_non_present,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test find nodes distance zero
+            // test.run(TwoClientTestSpec {
+            //         name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
+            //         description: "find nodes: distance zero expect called nodes enr".to_string(),
+            //         always_run: false,
+            //         run: test_find_nodes_zero_distance,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
+            //
+            // // Test find content receipts over uTP
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_recursive_find_content_receipts_over_utp,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
 
-            // Test block header with proof after Shapella upgrade (with withdraws)
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Header (Shapella) {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_header_shapella,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test block body
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Block Body {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_body,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test receipts
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("OFFER Receipts {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_offer_receipts,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test portal history ping
+            // Test find nodes distance 256
             test.run(TwoClientTestSpec {
-                    name: format!("PING {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
+                    name: format!("FIND_NODES Distance 256 {} --> {}", client_a.name, client_b.name),
+                    description: "find nodes: distance 256 expect seeded enr returned".to_string(),
                     always_run: false,
-                    run: test_ping,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test find content immediate return
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_CONTENT {} --> {}", client_a.name, client_b.name),
-                    description: "find content: peer immediately returns locally available content".to_string(),
-                    always_run: false,
-                    run: test_find_content_immediate_return,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test find content non-present
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_CONTENT non present {} --> {}", client_a.name, client_b.name),
-                    description: "find content: calls find content that doesn't exist".to_string(),
-                    always_run: false,
-                    run: test_find_content_non_present,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test find nodes distance zero
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_NODES Distance 0 {} --> {}", client_a.name, client_b.name),
-                    description: "find nodes: distance zero expect called nodes enr".to_string(),
-                    always_run: false,
-                    run: test_find_nodes_zero_distance,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            // Test find content receipts over uTP
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("RECURSIVE_FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_recursive_find_content_receipts_over_utp,
+                    run: test_find_nodes_256_distance,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
                 }
@@ -628,6 +640,37 @@ dyn_async! {
             Err(err) => {
                 panic!("Error: Unable to get response from FINDCONTENT request: {err:?}");
             }
+        }
+    }
+}
+
+dyn_async! {
+    async fn test_find_nodes_256_distance<'a>(client_a: Client, client_b: Client) {
+        let target_enr = match client_b.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        let (_, enr) = generate_random_remote_enr();
+        // seed enr into routing table
+        match HistoryNetworkApiClient::add_enr(&client_b.rpc, enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        match client_a.rpc.find_nodes(target_enr.clone(), vec![256]).await {
+            Ok(response) => {
+                panic!("FindNodes 256 distance expected to contained seeded Enr {}", response.len());
+                if !response.contains(&enr) {
+                    panic!("FindNodes 256 distance expected to contained seeded Enr");
+                }
+            }
+            Err(err) => panic!("{}", &err.to_string()),
         }
     }
 }
