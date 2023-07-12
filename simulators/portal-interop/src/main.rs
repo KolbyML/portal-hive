@@ -227,8 +227,20 @@ dyn_async! {
 
         let result = client_a.rpc.find_content(target_enr, header_with_proof_key.clone()).await;
 
-        if let Ok(ContentInfo::Content{ content: _ }) = result {
-            test.fatal("Error: Unexpected FINDCONTENT response: wasn't supposed to return back content");
+        match result {
+            Ok(result) => {
+                match result {
+                    ContentInfo::Content{ content: val } => {
+                            test.fatal("Error: Unexpected FINDCONTENT response: didn't return expected header with proof value");
+                    },
+                    other => {
+                        test.fatal(&format!("Error: Unexpected FINDCONTENT response: {other:?}"));
+                    }
+                }
+            },
+            Err(err) => {
+                test.fatal(&format!("Error: Unable to get response from FINDCONTENT request: {err:?}"));
+            }
         }
     }
 }
