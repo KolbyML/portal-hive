@@ -1,4 +1,4 @@
-use ethportal_api::generate_random_remote_enr;
+use ethportal_api::{Enr, generate_random_remote_enr};
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
@@ -9,6 +9,7 @@ use hivesim::{dyn_async, Client, Simulation, Suite, Test, TestSpec, TwoClientTes
 use itertools::Itertools;
 use serde_json::json;
 use tokio::time::Duration;
+use ethportal_api::types::distance::{Metric, XorMetric};
 
 // Header with proof for block number 14764013
 const HEADER_WITH_PROOF_KEY: &str =
@@ -653,24 +654,50 @@ dyn_async! {
             }
         };
 
-        let (_, enr) = generate_random_remote_enr();
-        // seed enr into routing table
-        match HistoryNetworkApiClient::add_enr(&client_b.rpc, enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
+        // 256 length vector filled with x random enrs. We do a best effort approach.
+        // client_b node_id is random then we generate 256 random node_ids and only keep the first
+        // distance we find for each slot. So it is almost impossible but there is a possibility
+        // this test may only test against 1 node, but the benefits of randomness increase the
+        // validity of this test, since no 2 runs will be the same.
+        let mut enrs: Vec<Option<Enr>> = vec![None; 256];
+        for _ in 1..=256 {
+            let (_, enr) = generate_random_remote_enr();
+            let distance = XorMetric::distance(&target_enr.node_id().raw(), &enr.node_id().raw()).log2();
 
-        match client_a.rpc.find_nodes(target_enr.clone(), vec![256]).await {
-            Ok(response) => {
-                panic!("FindNodes 256 distance expected to contained seeded Enr {}", response.len());
-                if !response.contains(&enr) {
-                    panic!("FindNodes 256 distance expected to contained seeded Enr");
+            if let Some(distance) = distance {
+                if enrs[distance - 1] == None {
+                    enrs[distance - 1] = Some(enr.clone());
+                    // seed enr into routing table
+                    match HistoryNetworkApiClient::add_enr(&client_b.rpc, enr.clone()).await {
+                        Ok(response) => match response {
+                            true => (),
+                            false => panic!("AddEnr expected to get true and instead got false")
+                        },
+                        Err(err) => panic!("{}", &err.to_string()),
+                    }
                 }
             }
-            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        for i in 1..=256 {
+            if let Some(enr) = &enrs[i - 1] {
+                match client_a.rpc.find_nodes(target_enr.clone(), vec![i as u16]).await {
+                    Ok(response) => {
+                        if response.is_empty() {
+                            panic!("FindNodes expected to have received a non-empty response on index {i}");
+                        }
+                        //
+                        // if response.len() != 1 {
+                        //     panic!("FindNodes expected to have received only 1 enr instead got: {}", response.len());
+                        // }
+
+                        if &response[0] != enr {
+                            panic!("FindNodes {i} distance expected to contained seeded Enr {} 123321 {}", &response[0], enr);
+                        }
+                    }
+                    Err(err) => panic!("{}", &err.to_string()),
+                }
+            }
         }
     }
 }
