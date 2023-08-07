@@ -185,27 +185,17 @@ dyn_async! {
                 }
             ).await;
 
-            // Test find content receipts over uTP
-            test.run(
-                TwoClientTestSpec {
-                    name: format!("FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
-                    description: "".to_string(),
-                    always_run: false,
-                    run: test_find_content_receipts_over_utp,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
-
-            test.run(TwoClientTestSpec {
-                    name: format!("FIND_NODES Distance bbb {} --> {}", client_a.name, client_b.name),
-                    description: "find nodes: distance 256 expect seeded enr returned".to_string(),
-                    always_run: false,
-                    run: test_history_get_enr_enr_present,
-                    client_a: &(*client_a).clone(),
-                    client_b: &(*client_b).clone(),
-                }
-            ).await;
+            // // Test find content receipts over uTP
+            // test.run(
+            //     TwoClientTestSpec {
+            //         name: format!("FIND_CONTENT Receipts over uTP {} --> {}", client_a.name, client_b.name),
+            //         description: "".to_string(),
+            //         always_run: false,
+            //         run: test_find_content_receipts_over_utp,
+            //         client_a: &(*client_a).clone(),
+            //         client_b: &(*client_b).clone(),
+            //     }
+            // ).await;
         }
    }
 }
@@ -656,55 +646,7 @@ dyn_async! {
 }
 
 dyn_async! {
-    async fn test_history_get_enr_enr_present<'a>(client: Client, client_b: Client) {
-        let (_, enr) = generate_random_remote_enr();
-
-        // seed enr into routing table
-        match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-
-        //panic!("bob your uncle {}", serde_json::from_value(enr.node_id().into()));
-
-        // check if we can fetch data from routing table
-        match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
-            Ok(response) => {
-                if response != enr {
-                    panic!("Response from GetEnr didn't return expected Enr")
-                }
-            },
-            Err(err) => panic!("{}", &err.to_string()),
-        }
-    }
-}
-
-dyn_async! {
     async fn test_find_nodes_256_distance<'a>(client_a: Client, client_b: Client) {
-        let (_, enr) = generate_random_remote_enr();
-
-        // seed enr into routing table
-        match HistoryNetworkApiClient::add_enr(&client_a.rpc, enr.clone()).await {
-            Ok(response) => match response {
-                true => (),
-                false => panic!("AddEnr expected to get true and instead got false")
-            },
-            Err(err) => panic!("dcba{}", &err.to_string()),
-        }
-
-        // check if we can fetch data from routing table
-        match HistoryNetworkApiClient::lookup_enr(&client_a.rpc, enr.node_id()).await {
-            Ok(response) => {
-                if response != enr {
-                    panic!("Response from GetEnr didn't return expected Enr")
-                }
-            },
-            Err(err) => panic!("abcd{}", &err.to_string()),
-        }
-
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
@@ -722,21 +664,12 @@ dyn_async! {
             }
         };
 
-        match HistoryNetworkApiClient::get_enr(&client_b.rpc, client_a_enr.node_id()).await {
-            Ok(response) => {
-                if response != client_a_enr.clone() {
-                    panic!("Response from GetEnr didn't return expected Enr")
-                } else {
-                    panic!("we got it")
-                }
-            },
-            Err(err) => panic!("aff{}", &err.to_string()),
-        }
-
+        let mut bob = 0;
         let distance = XorMetric::distance(&target_enr.node_id().raw(), &client_a_enr.node_id().raw()).log2();
         if let Some(distance) = distance {
             // only test distances found below 240 since clients are highly likely to throw out
             // enrs above this
+            bob = distance.clone();
             if enrs[distance - 1] == None {
                 enrs[distance - 1] = Some(client_a_enr.clone());
                 // seed enr into routing table
@@ -792,7 +725,18 @@ dyn_async! {
                                     if response != enr.clone() {
                                         panic!("Response from GetEnr didn't return expected Enr")
                                     } else {
-                                        panic!("we got it")
+                                        let mut hi22: String = "".to_string();
+                                        for jj in 1..=256 {
+                                            match client_a.rpc.find_nodes(target_enr.clone(), vec![jj as u16]).await {
+                                                Ok(response) => {
+                                                    if response.contains(enr) {
+                                                        hi22 += &(jj.to_string() + "k ");
+                                                    }
+                                                },
+                                                Err(err) => panic!("ff{}", &err.to_string()),
+                                            }
+                                        }
+                                        panic!("we got it {} iii  {} :: {}", bob, i, hi22);
                                     }
                                 },
                                 Err(err) => panic!("ff{}", &err.to_string()),

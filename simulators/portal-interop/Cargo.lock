@@ -2846,7 +2846,6 @@ dependencies = [
 [[package]]
 name = "serde-hex"
 version = "0.1.0"
-
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca37e3e4d1b39afd7ff11ee4e947efae85adfddf4841787bfa47c470e96dc26d"
 dependencies = [
