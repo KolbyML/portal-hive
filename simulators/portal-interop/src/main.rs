@@ -1,4 +1,4 @@
-use ethportal_api::{Enr, generate_random_remote_enr};
+use ethportal_api::generate_random_remote_enr;
 use ethportal_api::jsonrpsee::core::__reexports::serde_json;
 use ethportal_api::types::portal::ContentInfo;
 use ethportal_api::{
@@ -192,6 +192,16 @@ dyn_async! {
                     description: "".to_string(),
                     always_run: false,
                     run: test_find_content_receipts_over_utp,
+                    client_a: &(*client_a).clone(),
+                    client_b: &(*client_b).clone(),
+                }
+            ).await;
+
+            test.run(TwoClientTestSpec {
+                    name: format!("FIND_NODES Distance bbb {} --> {}", client_a.name, client_b.name),
+                    description: "find nodes: distance 256 expect seeded enr returned".to_string(),
+                    always_run: false,
+                    run: test_history_get_enr_enr_present,
                     client_a: &(*client_a).clone(),
                     client_b: &(*client_b).clone(),
                 }
@@ -646,7 +656,55 @@ dyn_async! {
 }
 
 dyn_async! {
+    async fn test_history_get_enr_enr_present<'a>(client: Client, client_b: Client) {
+        let (_, enr) = generate_random_remote_enr();
+
+        // seed enr into routing table
+        match HistoryNetworkApiClient::add_enr(&client.rpc, enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+
+        //panic!("bob your uncle {}", serde_json::from_value(enr.node_id().into()));
+
+        // check if we can fetch data from routing table
+        match HistoryNetworkApiClient::get_enr(&client.rpc, enr.node_id()).await {
+            Ok(response) => {
+                if response != enr {
+                    panic!("Response from GetEnr didn't return expected Enr")
+                }
+            },
+            Err(err) => panic!("{}", &err.to_string()),
+        }
+    }
+}
+
+dyn_async! {
     async fn test_find_nodes_256_distance<'a>(client_a: Client, client_b: Client) {
+        let (_, enr) = generate_random_remote_enr();
+
+        // seed enr into routing table
+        match HistoryNetworkApiClient::add_enr(&client_a.rpc, enr.clone()).await {
+            Ok(response) => match response {
+                true => (),
+                false => panic!("AddEnr expected to get true and instead got false")
+            },
+            Err(err) => panic!("dcba{}", &err.to_string()),
+        }
+
+        // check if we can fetch data from routing table
+        match HistoryNetworkApiClient::lookup_enr(&client_a.rpc, enr.node_id()).await {
+            Ok(response) => {
+                if response != enr {
+                    panic!("Response from GetEnr didn't return expected Enr")
+                }
+            },
+            Err(err) => panic!("abcd{}", &err.to_string()),
+        }
+
         let target_enr = match client_b.rpc.node_info().await {
             Ok(node_info) => node_info.enr,
             Err(err) => {
@@ -654,22 +712,63 @@ dyn_async! {
             }
         };
 
+        let mut enrs = vec![None; 256];
+
+        // We are adding client a to our list so we then can assume only one client per bucket
+        let client_a_enr = match client_a.rpc.node_info().await {
+            Ok(node_info) => node_info.enr,
+            Err(err) => {
+                panic!("Error getting node info: {err:?}");
+            }
+        };
+
+        match HistoryNetworkApiClient::get_enr(&client_b.rpc, client_a_enr.node_id()).await {
+            Ok(response) => {
+                if response != client_a_enr.clone() {
+                    panic!("Response from GetEnr didn't return expected Enr")
+                } else {
+                    panic!("we got it")
+                }
+            },
+            Err(err) => panic!("aff{}", &err.to_string()),
+        }
+
+        let distance = XorMetric::distance(&target_enr.node_id().raw(), &client_a_enr.node_id().raw()).log2();
+        if let Some(distance) = distance {
+            // only test distances found below 240 since clients are highly likely to throw out
+            // enrs above this
+            if enrs[distance - 1] == None {
+                enrs[distance - 1] = Some(client_a_enr.clone());
+                // seed enr into routing table
+                match HistoryNetworkApiClient::add_enr(&client_b.rpc, client_a_enr.clone()).await {
+                    Ok(response) => match response {
+                        true => (),
+                        false => panic!("AddEnr expected to get true and instead got false")
+                    },
+                    Err(err) => panic!("{}", &err.to_string()),
+                }
+            }
+        }
+
         // 240 length vector filled with x random enrs. We do a best effort approach.
         // client_b node_id is random then we generate 240 random node_ids and only keep the first
         // distance we find for each slot. So it is almost impossible but there is a possibility
         // this test may only test against 1 node, but the benefits of randomness increase the
         // validity of this test, since no 2 runs will be the same.
         // we only do 240 since as we approach it is very unlikely we will still hold the enr
-        let mut enrs: Vec<Option<Enr>> = vec![None; 240];
-        for _ in 1..=240 {
+        let mut hi = 1;
+        let mut hi2: String = "".to_string();
+        for _ in 1..=50000 {
             let (_, enr) = generate_random_remote_enr();
             let distance = XorMetric::distance(&target_enr.node_id().raw(), &enr.node_id().raw()).log2();
 
             if let Some(distance) = distance {
                 // only test distances found below 240 since clients are highly likely to throw out
                 // enrs above this
-                if distance < 240 && enrs[distance - 1] == None {
+                if enrs[distance - 1] == None {
+                    hi += 1;
                     enrs[distance - 1] = Some(enr.clone());
+                    hi2 += &(distance.to_string() + " ");
                     // seed enr into routing table
                     match HistoryNetworkApiClient::add_enr(&client_b.rpc, enr.clone()).await {
                         Ok(response) => match response {
@@ -681,16 +780,32 @@ dyn_async! {
                 }
             }
         }
+        //panic!("{hi} {}", hi2);
 
-        for i in 1..=240 {
+        for i in 1..=256 {
             if let Some(enr) = &enrs[i - 1] {
                 match client_a.rpc.find_nodes(target_enr.clone(), vec![i as u16]).await {
                     Ok(response) => {
                         if response.is_empty() {
-                            panic!("FindNodes expected to have received a non-empty response on index {i}");
+                            match HistoryNetworkApiClient::get_enr(&client_b.rpc, enr.node_id()).await {
+                                Ok(response) => {
+                                    if response != enr.clone() {
+                                        panic!("Response from GetEnr didn't return expected Enr")
+                                    } else {
+                                        panic!("we got it")
+                                    }
+                                },
+                                Err(err) => panic!("ff{}", &err.to_string()),
+                            }
+                            //panic!("FindNodes expected to have received a non-empty response on index {i} || {hi2}");
                         }
 
-                        if &response[0] != enr {
+
+                        if response.len() != 1 {
+                            panic!("FindNodes expected to have received only 1 enr instead got: {}", response.len());
+                        }
+
+                        if !response.contains(enr) {
                             panic!("FindNodes {i} distance expected to contained seeded Enr {} 123321 {}", &response[0], enr);
                         }
                     }
