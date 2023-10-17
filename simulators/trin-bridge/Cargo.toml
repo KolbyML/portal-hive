@@ -5,9 +5,9 @@ authors = ["https://github.com/ethereum/portal-hive/graphs/contributors"]
 edition = "2021"
 
 [dependencies]
-ethportal-api = { git = "https://github.com/ethereum/trin" }
-portal-bridge = { git = "https://github.com/ethereum/trin" }
-trin-validation = { git = "https://github.com/ethereum/trin" }
+ethportal-api = { git = "https://github.com/ethereum/trin", rev = "2a32224e3c2b0b80bc37c1b692c33016371f197a" }
+portal-bridge = { git = "https://github.com/ethereum/trin", rev = "2a32224e3c2b0b80bc37c1b692c33016371f197a" }
+trin-validation = { git = "https://github.com/ethereum/trin", rev = "2a32224e3c2b0b80bc37c1b692c33016371f197a" }
 hivesim = { path = "../../hivesim-rs" }
 itertools = "0.10.5"
 serde_yaml = "0.9"
