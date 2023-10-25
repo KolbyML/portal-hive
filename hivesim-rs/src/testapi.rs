@@ -368,6 +368,8 @@ pub struct NClientTestSpec {
     pub run: AsyncNClientsTestFunc,
     // a hashmap of Hive Environment Variables
     pub environment: Option<Vec<Option<HashMap<String, String>>>>,
+    // test data which can be passed to the test
+    pub test_data: Option<Vec<(String, String)>>,
     pub clients: Vec<ClientDefinition>,
 }
 
@@ -385,6 +387,7 @@ impl Testable for NClientTestSpec {
         run_n_client_test(
             simulation,
             test_run,
+            self.test_data.to_owned(),
             self.environment.to_owned(),
             self.clients.to_owned(),
             self.run,
@@ -397,6 +400,7 @@ impl Testable for NClientTestSpec {
 async fn run_n_client_test(
     host: Simulation,
     test: TestRun,
+    test_data: Option<Vec<(String, String)>>,
     environment: Option<Vec<Option<HashMap<String, String>>>>,
     clients: Vec<ClientDefinition>,
     func: AsyncNClientsTestFunc,
@@ -431,7 +435,7 @@ async fn run_n_client_test(
                         .await,
                 );
             }
-            (func)(client_vec).await;
+            (func)(client_vec, test_data).await;
         })
         .await,
     );
