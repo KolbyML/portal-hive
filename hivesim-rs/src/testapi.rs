@@ -1,5 +1,5 @@
 use crate::types::{ClientDefinition, SuiteID, TestData, TestID, TestResult};
-use crate::Simulation;
+use crate::{simulation, Simulation};
 use ::std::{boxed::Box, future::Future, pin::Pin};
 use async_trait::async_trait;
 use core::fmt::Debug;
@@ -149,6 +149,12 @@ pub struct TestSpec {
 #[async_trait]
 impl Testable for TestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+        if let Some(test_match) = simulation.test_matcher.clone() {
+            if !self.always_run && !test_match.match_test(&suite.name, &self.name) {
+                return;
+            }
+        }
+
         let test_run = TestRun {
             suite_id,
             suite,
@@ -218,6 +224,12 @@ pub struct NClientTestSpec {
 #[async_trait]
 impl Testable for NClientTestSpec {
     async fn run_test(&self, simulation: Simulation, suite_id: SuiteID, suite: Suite) {
+        if let Some(test_match) = simulation.test_matcher.clone() {
+            if !self.always_run && !test_match.match_test(&suite.name, &self.name) {
+                return;
+            }
+        }
+
         let test_run = TestRun {
             suite_id,
             suite,
@@ -276,4 +288,25 @@ async fn run_n_client_test(
     );
 
     host.end_test(suite_id, test_id, test_result).await;
+}
+
+pub async fn run_suite(host: Simulation, suites: Vec<Suite>) {
+    for suite in suites {
+        if let Some(test_match) = host.test_matcher.clone() {
+            if !test_match.match_test(&suite.name, "") {
+                continue;
+            }
+        }
+
+        let name = suite.clone().name;
+        let description = suite.clone().description;
+
+        let suite_id = host.start_suite(name, description, "".to_string()).await;
+
+        for test in &suite.tests {
+            test.run_test(host.clone(), suite_id, suite.clone()).await;
+        }
+
+        host.end_suite(suite_id).await;
+    }
 }

@@ -9,7 +9,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug)]
 pub struct Simulation {
     pub url: String,
-    pub m: TestMatcher,
+    pub test_matcher: Option<TestMatcher>,
 }
 
 impl Default for Simulation {
@@ -40,21 +40,22 @@ impl Simulation {
     /// and connects to it. It will panic if HIVE_SIMULATOR is not set.
     pub fn new() -> Self {
         let url = env::var("HIVE_SIMULATOR").expect("HIVE_SIMULATOR environment variable not set");
+        let test_matcher = match env::var("HIVE_TEST_PATTERN") {
+            Ok(pattern) => {
+                if pattern.is_empty() {
+                    None
+                } else {
+                    Some(TestMatcher::new(&pattern))
+                }
+            }
+            Err(_) => None,
+        };
 
         if url.is_empty() {
             panic!("HIVE_SIMULATOR environment variable is empty")
         }
 
-        // TODO: Handle test matcher pattern
-
-        Self {
-            url,
-            m: TestMatcher {
-                suite: "".to_string(),
-                test: "".to_string(),
-                pattern: "".to_string(),
-            },
-        }
+        Self { url, test_matcher }
     }
 
     pub async fn start_suite(
