@@ -1,3 +1,8 @@
+# This Repository is deprecated
+You can find `hivesim-rs` and Portal rust simulators at the main hive repo https://github.com/ethereum/hive 
+
+please don't use this repo and use the main hive repo instead
+
 # portal-hive - Portal network end-to-end test harness
 forked from ethereum [Hive](https://github.com/ethereum/hive)
 

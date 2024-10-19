@@ -40,33 +40,8 @@ jobs:
       - run:
           name: "Compile Go simulators"
           command: ".circleci/compile-simulators.sh"
-  hivesim-rs:
-      docker:
-        - image: cimg/rust:1.75.0
-      steps:
-        - checkout
-        - run:
-            name: Install rustfmt
-            command: rustup component add rustfmt
-        - run:
-            name: Install Clippy
-            command: rustup component add clippy
-        - run:
-            name: Install Clang
-            command: sudo apt update && sudo apt-get install clang -y
-        - run:
-            name: "Lint"
-            command: "cd hivesim-rs && cargo fmt --all -- --check"
-        - run:
-            name: "Build"
-            command: "cd hivesim-rs && cargo clippy --all --all-targets --all-features --no-deps -- --deny warnings"
-        - run:
-            name: "Test hivesim-rs"
-            command: "cd hivesim-rs && cargo test --workspace -- --nocapture"            
 
 workflows:
   main:
     jobs:
-      - go-test
       - build
-      - hivesim-rs
